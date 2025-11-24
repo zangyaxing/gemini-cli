@@ -19,6 +19,7 @@ import type {
   ToolCall,
   Status as CoreStatus,
   EditorType,
+  GitService,
 } from '@google/gemini-cli-core';
 import { CoreToolScheduler, debugLogger } from '@google/gemini-cli-core';
 import { useCallback, useState, useMemo, useEffect, useRef } from 'react';
@@ -68,6 +69,7 @@ export function useReactToolScheduler(
   onComplete: (tools: CompletedToolCall[]) => Promise<void>,
   config: Config,
   getPreferredEditor: () => EditorType | undefined,
+  gitService?: GitService,
 ): [
   TrackedToolCall[],
   ScheduleFn,
@@ -164,6 +166,7 @@ export function useReactToolScheduler(
         onToolCallsUpdate: toolCallsUpdateHandler,
         getPreferredEditor: stableGetPreferredEditor,
         config,
+        gitService,
       }),
     [
       config,
@@ -171,6 +174,7 @@ export function useReactToolScheduler(
       allToolCallsCompleteHandler,
       toolCallsUpdateHandler,
       stableGetPreferredEditor,
+      gitService,
     ],
   );
 

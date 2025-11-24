@@ -48,6 +48,8 @@ import { ShellToolInvocation } from '../tools/shell.js';
 import type { ToolConfirmationRequest } from '../confirmation-bus/types.js';
 import { MessageBusType } from '../confirmation-bus/types.js';
 import type { MessageBus } from '../confirmation-bus/message-bus.js';
+import type { GitService } from '../services/gitService.js';
+import { WRITE_FILE_TOOL_NAME } from '../tools/tool-names.js';
 
 export type ValidatingToolCall = {
   status: 'validating';
@@ -329,6 +331,7 @@ interface CoreToolSchedulerOptions {
   onAllToolCallsComplete?: AllToolCallsCompleteHandler;
   onToolCallsUpdate?: ToolCallsUpdateHandler;
   getPreferredEditor: () => EditorType | undefined;
+  gitService?: GitService;
 }
 
 export class CoreToolScheduler {
@@ -345,6 +348,7 @@ export class CoreToolScheduler {
   private onToolCallsUpdate?: ToolCallsUpdateHandler;
   private getPreferredEditor: () => EditorType | undefined;
   private config: Config;
+  private gitService?: GitService;
   private isFinalizingToolCalls = false;
   private isScheduling = false;
   private isCancelling = false;
@@ -363,6 +367,7 @@ export class CoreToolScheduler {
     this.onAllToolCallsComplete = options.onAllToolCallsComplete;
     this.onToolCallsUpdate = options.onToolCallsUpdate;
     this.getPreferredEditor = options.getPreferredEditor;
+    this.gitService = options.gitService;
 
     // Subscribe to message bus for ASK_USER policy decisions
     // Use a static WeakMap to ensure we only subscribe ONCE per MessageBus instance
@@ -1085,6 +1090,25 @@ export class CoreToolScheduler {
         const scheduledCall = toolCall;
         const { callId, name: toolName } = scheduledCall.request;
         const invocation = scheduledCall.invocation;
+
+        // Create a checkpoint before executing file-modifying tools
+        if (
+          this.gitService &&
+          this.config.getCheckpointingEnabled() &&
+          (toolName === 'replace' || toolName === WRITE_FILE_TOOL_NAME)
+        ) {
+          try {
+            await this.gitService.createFileSnapshot(
+              `Pre-modification checkpoint for ${toolName}`,
+            );
+          } catch (error) {
+            // Log error but don't stop execution
+            console.error(
+              `Failed to create pre-modification checkpoint: ${error}`,
+            );
+          }
+        }
+
         this.setStatusInternal(callId, 'executing', signal);
 
         const liveOutputCallback =

@@ -178,6 +178,7 @@ export const useGeminiStream = (
     },
     config,
     getPreferredEditor,
+    gitService,
   );
 
   const pendingToolCallGroupDisplay = useMemo(
